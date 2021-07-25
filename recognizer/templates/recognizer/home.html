@@ -1,0 +1,8 @@
+{% extends "recognizer/base.html" %}
+
+{% block content %}
+    <h1>Home</h1>
+    {% for d in data %}
+        <h2> {{ d.user }}, {{ d.user.email }} - {{ d.fen }}, {{ d.date_uploaded|date:"Y-m-d"}}</h2>
+    {% endfor %}
+{% endblock content %}

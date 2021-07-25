@@ -1,0 +1,10 @@
+{% extends "recognizer/base.html" %}
+
+{% block content %}
+    <h1>About</h1>
+
+    <h2>Contribuintes: </h2>
+    {% for d in data %}
+        <h2>{{d.user}}, {{d.user.email}}</h2>
+    {% endfor %}
+{% endblock content %}
