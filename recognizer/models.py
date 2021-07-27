@@ -9,7 +9,6 @@ class Board(models.Model):
     fen = models.TextField(default=None, null=True, blank=True)
     date_uploaded = models.DateTimeField(default=timezone.now)
     user = models.ForeignKey(User, on_delete=models.RESTRICT, blank=True, null=True)
-    #user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     # def __str__(self):
     #     return self.board_matrix_unicode
