@@ -2,6 +2,8 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from .models import Board
 from .forms import BoardUploadForm
+from .chess_recognizer import ChessRecognizer, translate_pred_to_pt, translate_pred_to_unicode
+from PIL import Image
 
 
 # Create your views here.
@@ -25,8 +27,16 @@ def upload(request):
 
         if form.is_valid():
             board = form.save(commit=False)
+            # Passa um usuário só se estiver logado, caso contrario fica NULL
             if not request.user.is_anonymous:
                 board.user = request.user
+            # Pega a imagem na memória recém uploadada e passa pra uma img PIL
+            stream = board.board_img.file
+            img = Image.open(stream)
+            # Faz a classificação na img PIL
+            recognizer = ChessRecognizer(img)
+            # Preenche o resultado da classificação no campo do form, que vai pro DB.
+            board.board_matrix = str(recognizer.predicted_board)
             board.save()
             messages.success(request, f'Uploaded board image!')
             return redirect('recognizer-upload')
