@@ -4,7 +4,7 @@ from .models import Board
 from .forms import BoardUploadForm
 from .chess_recognizer import ChessRecognizer, translate_pred_to_pt, translate_pred_to_unicode
 from PIL import Image
-
+import pprint
 
 # Create your views here.
 def home(request):
@@ -27,25 +27,35 @@ def upload(request):
 
         if form.is_valid():
             board = form.save(commit=False)
+
             # Passa um usuário só se estiver logado, caso contrario fica NULL
             if not request.user.is_anonymous:
                 board.user = request.user
+
             # Pega a imagem na memória recém uploadada e passa pra uma img PIL
             stream = board.board_img.file
             img = Image.open(stream)
+
             # Faz a classificação na img PIL
             recognizer = ChessRecognizer(img)
+
             # Preenche o resultado da classificação no campo do form, que vai pro DB.
-            board.board_matrix = str(recognizer.predicted_board)
+            predicted_board = recognizer.predicted_board
+            board.board_matrix = str(predicted_board)
             board.save()
             messages.success(request, f'Uploaded board image!')
-            return redirect('recognizer-upload')
+            
+            unicode_matrix = translate_pred_to_unicode(predicted_board).tolist()
+            context = {
+                'form': form,
+                'unicode_matrix': unicode_matrix,
+            }
+            return render(request, 'recognizer/upload.html', context)
 
     else:
         form = BoardUploadForm()
-
-    context = {
-        'form': form
-    }
-
-    return render(request, 'recognizer/upload.html', context)
+        context = {
+            'form': form,
+            'unicode_matrix': None,
+        }
+        return render(request, 'recognizer/upload.html', context)

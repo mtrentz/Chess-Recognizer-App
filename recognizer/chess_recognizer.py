@@ -1,12 +1,9 @@
 import cv2 as cv
 from PIL import Image
 import os
-import sys
 import numpy as np
-import matplotlib.pyplot as plt
 import torch
 from torchvision import transforms
-from pprint import pprint
 
 class ChessRecognizer:
     def __init__(self, PIL_img):
@@ -19,8 +16,6 @@ class ChessRecognizer:
         self.board_squares = self.board_squares(self.board_horizontal_lines, self.board_vertical_lines)
         self.predicted_board = self.predict_board(self.img, self.model, self.board_squares)
     
-    def __repr__(self):
-        return str(pprint(self.predicted_board.tolist()))
 
     def _get_lines(self, img_gray):
         """Busca as linhas da imagem"""
@@ -290,7 +285,7 @@ def translate_pred_to_unicode(predicted_board):
         'bP': ' \u265f ',
         'bQ': ' \u265b ',
         'bR': ' \u265c ',
-        'empty': '   ',
+        'empty': ' ',
         'wB': ' \u2657 ',
         'wK': ' \u2654 ',
         'wN': ' \u2658 ',
@@ -301,18 +296,6 @@ def translate_pred_to_unicode(predicted_board):
     translated_board = np.vectorize(code_map.get)(predicted_board)
 
     return translated_board
-
-
-if __name__ == "__main__":
-    rec = ChessRecognizer('chessboard.png')
-    code_board = rec.predicted_board
-
-    # rec.show_board_lines()
-    #print(rec)
-    print(translate_pred_to_unicode(code_board))
-
-
-
 
 
 

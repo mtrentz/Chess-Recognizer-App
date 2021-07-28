@@ -12,5 +12,14 @@
                 <button class="btn btn-outline-info" type="submit">Upload</button>
             </div>
         </form>
+        {% if unicode_matrix %}
+            {% for row in unicode_matrix %}
+                <p style="font-family:sans-serif">
+                    {% for val in row %}
+                        {{ val }}
+                    {% endfor %}
+                </p>
+            {% endfor %}
+        {% endif %}
     </div>
 {% endblock content %}
