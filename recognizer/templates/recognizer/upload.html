@@ -1,5 +1,11 @@
 {% extends "recognizer/base.html" %}
+{% load static %}
 {% load crispy_forms_tags %}
+
+{% block extrahead %}
+    <link rel="stylesheet" type="text/css" href="{% static 'recognizer/upload.css' %}">
+{% endblock extrahead%}
+
 {% block content %}
     <div class="content-section">
         <form method="POST" enctype="multipart/form-data">
@@ -12,14 +18,13 @@
                 <button class="btn btn-outline-info" type="submit">Upload</button>
             </div>
         </form>
-
-        <table style="text-align:center;border-spacing:0pt;font-family:'Arial Unicode MS'; border-collapse:collapse; border-color: black; border-style: solid; border-width: 0pt 0pt 0pt 0pt;">
+        
+        <table class="chess_board">
             <tbody>
                 {% for row in unicode_matrix %}
-                    <tr>
+                    <tr class="board_row">
                         {% for val in row %}
-                            <!-- <td style="width:24pt; height:24pt; font-family:sans-serif"> -->
-                            <td style="width:24pt; height:24pt; border-collapse:collapse; border-color: black; border-style: solid; border-width: 1pt 0pt 0pt 1pt; font-family:sans-serif">
+                            <td class="board_cell">
                                 {{ val }}
                             </td>
                         {% endfor %}
@@ -27,5 +32,6 @@
                 {% endfor %}
             </tbody>
         </table>
+
     </div>
 {% endblock content %}

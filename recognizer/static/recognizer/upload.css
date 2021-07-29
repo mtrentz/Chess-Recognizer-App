@@ -1,0 +1,28 @@
+.chess_board {
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: center;
+    border-spacing: 0pt;
+    border-collapse: collapse;
+    border-color:black;
+    border-style: solid;
+    border-width: 0pt;
+}
+
+.board_cell {
+    width:24pt;
+    height:24pt;
+    border-collapse:collapse;
+    border-color: black;
+    border-style: solid;
+    border-width: 1pt 1pt 1pt 1pt;
+}
+
+.chess_board tr:nth-child(even) td:nth-child(odd){
+    background-color: lightgrey;
+}
+
+.chess_board tr:nth-child(odd) td:nth-child(even){
+    background-color: lightgrey;
+}
+
+

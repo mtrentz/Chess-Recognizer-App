@@ -15,6 +15,9 @@
     <!-- CSS -->
     <link rel="stylesheet" type="text/css" href="{% static 'recognizer/main.css' %}">
 
+    <!-- Bloco para adicionar mais css nos childs -->
+    {% block extrahead %}{% endblock %}
+
     {% if title %}
         <title>About</title>
     {% else %}
