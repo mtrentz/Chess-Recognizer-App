@@ -25,4 +25,11 @@
     background-color: lightgrey;
 }
 
+.chess_board tr:nth-child(even) td:nth-child(even){
+    background-color: white;
+}
+
+.chess_board tr:nth-child(odd) td:nth-child(odd){
+    background-color: white;
+}
 
