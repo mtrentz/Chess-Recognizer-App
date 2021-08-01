@@ -33,5 +33,29 @@
             </tbody>
         </table>
 
+        {% if unicode_matrix %}
+            <div class="form-group row">
+                <label class="col-sm-2">Whose turn is it? </label>
+                <div class="col-sm-10">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio1" value="white" data-white checked>
+                        <label class="form-check-label" for="inlineRadio1">White</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio2" value="black" data-black>
+                        <label class="form-check-label" for="inlineRadio2">Black</label>
+                    </div>
+                    </div>
+                </div>
+                
+            <p data-fen> {{ fen.fen_white }}</p>
+
+        {% endif %}
     </div>
+
+    <!-- Meus FEN para poder pegar dentro do javascript -->
+    {{ fen|json_script:"fen_data" }}
+
+    <script src="{% static 'recognizer/upload.js' %}" defer></script>
+
 {% endblock content %}
