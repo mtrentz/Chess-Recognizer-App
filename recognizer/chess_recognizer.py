@@ -4,6 +4,7 @@ import os
 import numpy as np
 import torch
 from torchvision import transforms
+import io
 
 class ChessRecognizer:
     def __init__(self, PIL_img):
@@ -223,7 +224,7 @@ class ChessRecognizer:
             '3': 'bP',
             '4': 'bQ',
             '5': 'bR',
-            '6': 'empty',
+            '6': 'em',
             '7': 'wB',
             '8': 'wK',
             '9': 'wN',
@@ -263,7 +264,7 @@ def translate_pred_to_pt(predicted_board):
         'bP': 'Peao - Preto',
         'bQ': 'Rainha - Preto',
         'bR': 'Torre - Preto',
-        'empty': 'Vazio',
+        'em': 'Vazio',
         'wB': 'Bispo - Branco',
         'wK': 'Rei - Branco',
         'wN': 'Cavalo - Branco',
@@ -279,23 +280,50 @@ def translate_pred_to_pt(predicted_board):
 def translate_pred_to_unicode(predicted_board):
 
     code_map = {
-        'bB': ' \u265d ',
-        'bK': ' \u265a ',
-        'bN': ' \u265e ',
-        'bP': ' \u265f ',
-        'bQ': ' \u265b ',
-        'bR': ' \u265c ',
-        'empty': ' ',
-        'wB': ' \u2657 ',
-        'wK': ' \u2654 ',
-        'wN': ' \u2658 ',
-        'wP': ' \u2659 ',
-        'wQ': ' \u2655 ',
-        'wR': ' \u2656 ',
+        'bB': '\u265d',
+        'bK': '\u265a',
+        'bN': '\u265e',
+        'bP': '\u265f',
+        'bQ': '\u265b',
+        'bR': '\u265c',
+        'em': '',
+        'wB': '\u2657',
+        'wK': '\u2654',
+        'wN': '\u2658',
+        'wP': '\u2659',
+        'wQ': '\u2655',
+        'wR': '\u2656',
     }
     translated_board = np.vectorize(code_map.get)(predicted_board)
 
     return translated_board
+
+
+def board_to_fen(board):
+    # Coloca tudo em lowercase
+    board = np.char.lower(board)
+
+    # Use StringIO to build string more efficiently than concatenating
+    with io.StringIO() as s:
+        for row in board:
+            empty = 0
+            for cell in row:
+                c = cell[0]
+                if c in ('w', 'b'):
+                    if empty > 0:
+                        s.write(str(empty))
+                        empty = 0
+                    s.write(cell[1].upper() if c == 'w' else cell[1].lower())
+                else:
+                    empty += 1
+            if empty > 0:
+                s.write(str(empty))
+            s.write('/')
+        # Move one position back to overwrite last '/'
+        s.seek(s.tell() - 1)
+        # If you do not have the additional information choose what to put
+        s.write(' w KQkq - 0 1')
+        return s.getvalue()
 
 
 

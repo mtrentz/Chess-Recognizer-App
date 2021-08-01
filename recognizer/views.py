@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from .models import Board
 from .forms import BoardUploadForm
-from .chess_recognizer import ChessRecognizer, translate_pred_to_pt, translate_pred_to_unicode
+from .chess_recognizer import ChessRecognizer, translate_pred_to_unicode, board_to_fen
 from PIL import Image
 import pprint
 
@@ -22,6 +22,15 @@ def about(request):
     return render(request, 'recognizer/about.html', context)
 
 def upload(request):
+
+    context = {
+        'form': None,
+        'unicode_matrix': None,
+        'white': None,
+        'black': None,
+        'fen': None,
+    }
+
     if request.method == 'POST':
         form = BoardUploadForm(request.POST, request.FILES)
 
@@ -46,16 +55,23 @@ def upload(request):
             messages.success(request, f'Uploaded board image!')
             
             unicode_matrix = translate_pred_to_unicode(predicted_board).tolist()
-            context = {
-                'form': form,
-                'unicode_matrix': unicode_matrix,
+            # Pega o FEN do board, default pra white como a nova jogada
+            fen_white = board_to_fen(predicted_board)
+            # Copia o mesmo pro preto e muda a parte q diz quem é o prox
+            fen_black = fen_white[:-12] + 'b' + fen_white[-11:]
+
+            context['form'] = form
+            context['unicode_matrix'] = unicode_matrix
+            context['fen'] = {
+                'fen_white': fen_white,
+                'fen_black': fen_black,
             }
+
             return render(request, 'recognizer/upload.html', context)
 
     else:
         form = BoardUploadForm()
-        context = {
-            'form': form,
-            'unicode_matrix': None,
-        }
+
+        context['form'] = form
+
         return render(request, 'recognizer/upload.html', context)
