@@ -29,6 +29,7 @@ def upload(request):
         'white': None,
         'black': None,
         'fen': None,
+        'lichess_urls': None,
     }
 
     if request.method == 'POST':
@@ -60,11 +61,18 @@ def upload(request):
             # Copia o mesmo pro preto e muda a parte q diz quem é o prox
             fen_black = fen_white[:-12] + 'b' + fen_white[-11:]
 
+            lichess_play_white_url = "https://lichess.org/analysis/standard/" + fen_white
+            lichess_play_black_url = "https://lichess.org/analysis/standard/" + fen_black
+
             context['form'] = form
             context['unicode_matrix'] = unicode_matrix
             context['fen'] = {
                 'fen_white': fen_white,
                 'fen_black': fen_black,
+            }
+            context['lichess_urls'] = {
+                'play_white_url': lichess_play_white_url,
+                'play_black_url': lichess_play_black_url,
             }
 
             return render(request, 'recognizer/upload.html', context)

@@ -47,8 +47,12 @@
                     </div>
                     </div>
                 </div>
-                
-            <p data-fen> {{ fen.fen_white }}</p>
+            
+            
+            <input type="text" class="form-control" value="{{ fen.fen_white }}">
+
+            <!-- <button type="button" class="btn btn-dark">Play on Lichess</button> -->
+            <a class="btn btn-dark" href="{{ lichess_urls.play_white_url }}" target="_blank" role="button">Play on Lichess</a>
 
         {% endif %}
     </div>
