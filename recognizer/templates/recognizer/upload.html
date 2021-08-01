@@ -50,9 +50,9 @@
             
             
             <input type="text" class="form-control" value="{{ fen.fen_white }}">
+           
+           <a class="btn btn-dark" href="{{ lichess_urls.play_white_url }}" role="button"><img src="{% static 'recognizer/lichess.png' %}" width="20">  Play on Lichess</a>
 
-            <!-- <button type="button" class="btn btn-dark">Play on Lichess</button> -->
-            <a class="btn btn-dark" href="{{ lichess_urls.play_white_url }}" target="_blank" role="button">Play on Lichess</a>
 
         {% endif %}
     </div>
