@@ -32,4 +32,3 @@
 .chess_board tr:nth-child(odd) td:nth-child(odd){
     background-color: white;
 }
-

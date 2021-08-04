@@ -18,22 +18,25 @@
                 <button class="btn btn-outline-info" type="submit">Upload</button>
             </div>
         </form>
-        
-        <table class="chess_board">
-            <tbody>
-                {% for row in unicode_matrix %}
+
+        <div class="board_div">
+            <table class="chess_board">
+                <tbody class="chess_board_body">
+                    {% for row in unicode_matrix %}
                     <tr class="board_row">
                         {% for val in row %}
-                            <td class="board_cell">
-                                {{ val }}
-                            </td>
+                        <td class="board_cell">
+                            {{ val }}
+                        </td>
                         {% endfor %}
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         {% if unicode_matrix %}
+            <br>
             <div class="form-group row">
                 <label class="col-sm-2">Whose turn is it? </label>
                 <div class="col-sm-10">
@@ -48,17 +51,20 @@
                     </div>
                 </div>
             
-            
-            <input type="text" class="form-control" value="{{ fen.fen_white }}">
+            <p class="fen_label"> FEN code for this position</p>
+            <input type="text" class="form-control" value="{{ fen.fen_white }}" data-fen>
            
-           <a class="btn btn-dark" href="{{ lichess_urls.play_white_url }}" role="button"><img src="{% static 'recognizer/lichess.png' %}" width="20">  Play on Lichess</a>
+           <a class="btn btn-dark mt-3" id="lichess-btn" href="{{ lichess_urls.play_white_url }}" role="button"><img src="{% static 'recognizer/lichess.png' %}" width="20">  Play on Lichess</a>
 
 
         {% endif %}
+
     </div>
 
     <!-- Meus FEN para poder pegar dentro do javascript -->
     {{ fen|json_script:"fen_data" }}
+    <!-- Pega os urls do lichess pro botão -->
+    {{ lichess_urls|json_script:"lichess_urls" }}
 
     <script src="{% static 'recognizer/upload.js' %}" defer></script>
 
