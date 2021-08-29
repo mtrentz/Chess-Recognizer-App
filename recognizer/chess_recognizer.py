@@ -4,13 +4,15 @@ import os
 import numpy as np
 import torch
 from torchvision import transforms
+from itertools import combinations
+from collections import Counter
 import io
 
 class ChessRecognizer:
     def __init__(self, PIL_img):
         self.img = cv.cvtColor(np.array(PIL_img), cv.COLOR_RGB2BGR)
         self.img_gray = cv.cvtColor(self.img,cv.COLOR_BGR2GRAY)
-        self.X_max, self.Y_max, _ = self.img.shape
+        self.Y_max, self.X_max, _ = self.img.shape
         self.HERE = os.path.basename(os.path.dirname(os.path.realpath(__file__)))
         self.model = torch.load(os.path.join(self.HERE, 'torch_model.pth'), map_location=torch.device('cpu'))
         self.board_horizontal_lines, self.board_vertical_lines = self.board_lines(self.img_gray)
@@ -21,8 +23,10 @@ class ChessRecognizer:
     def _get_lines(self, img_gray):
         """Busca as linhas da imagem"""
 
-        edges = cv.Canny(img_gray,50,150,apertureSize = 3)
-        lines = cv.HoughLinesP(edges,1,np.pi/180,100,minLineLength=100,maxLineGap=10)
+        edges = cv.Canny(img_gray, 50, 150, apertureSize = 5)
+        min_length = round(min(img_gray.shape[0], img_gray.shape[1])*0.08)
+        max_gap = round(min(img_gray.shape[0], img_gray.shape[1])*0.01)
+        lines = cv.HoughLinesP(edges, 1, np.pi/180, 100, minLineLength=min_length, maxLineGap=max_gap)
 
         return lines
 
@@ -59,64 +63,165 @@ class ChessRecognizer:
         extended_horizontal_lines = [[0, l[1], self.X_max, l[3]] for l in horizontal_lines]
         extended_vertical_lines = [[l[0], 0, l[2], self.Y_max] for l in vertical_lines]
 
-        # Vou criar uma linha horizontal e vertical nas bordas da imagem
-        # Primeiro as horizontais no topo e fundo da img
-        extended_horizontal_lines.append([0, 0 , self.X_max, 0])
-        extended_horizontal_lines.append([0, self.Y_max , self.X_max, self.Y_max])
-        extended_vertical_lines.append([0, 0, 0, self.Y_max])
-        extended_vertical_lines.append([self.X_max, 0, self.X_max, self.Y_max])
+        ### remove duplicadas
+        extended_horizontal_lines = np.unique(np.array(extended_horizontal_lines), axis=0).tolist()
+        extended_vertical_lines = np.unique(np.array(extended_vertical_lines), axis=0).tolist()
 
         return extended_horizontal_lines, extended_vertical_lines
+
+    def _get_line_gaps(self, extended_horizontal_lines, extended_vertical_lines):
+        def h_line_gap(l1, l2):
+            # Aqui se eu tenho duas linhas horizontais, eu vou ver o gap VERTICAL delas,
+            # ou seja, o gap em Y
+            delta_y1 = abs(l1[1] - l2[1])
+            # Faz o mesmo pro y2
+            delta_y2 = abs(l1[3] - l2[3])
+            # Retorna a média dos dois
+            return (delta_y1 + delta_y2)/2
+
+
+        def v_line_gap(l1, l2):
+            # Aqui se eu tenho duas linhas verticais, eu vou ver o gap horizontal delas,
+            # ou seja, o gap em X
+            delta_x1 = abs(l1[0] - l2[0])
+            delta_x2 = abs(l1[2] - l2[2])
+            return (delta_x1 + delta_x2)/2
+
+        # Começo pegando os indexes (quantidade) de linhas horizontais e verticais
+        h_line_indexes = [i for i in range(len(extended_horizontal_lines))]
+        v_line_indexes = [i for i in range(len(extended_vertical_lines))]
+        # Agora eu pego a combinação entre os indexes, que vou medir os gaps
+        h_line_combinations = list(combinations(h_line_indexes, 2))
+        v_line_combinations = list(combinations(v_line_indexes, 2))
+        # Em cada combinação eu calculo o gap entre as linhas e salvo como (l1_index, l2_index, l1l2_gap)
+        h_gaps = []
+        v_gaps = []
+
+        for h_comb in h_line_combinations:
+            # h_comb[0] é o index de uma linha, h_comb[1] é o index de outra
+            l1_index = h_comb[0]
+            l2_index = h_comb[1]
+            # Pego l1 e l2 em si
+            l1 = extended_horizontal_lines[l1_index]
+            l2 = extended_horizontal_lines[l2_index]
+            # Calculo o gap entre elas
+            hgap = h_line_gap(l1, l2)
+            # Guardo os index e o gap entre elas
+            h_gaps.append((l1_index, l2_index, hgap))
+
+        for v_comb in v_line_combinations:
+            l1_index = v_comb[0]
+            l2_index = v_comb[1]
+            l1 = extended_vertical_lines[l1_index]
+            l2 = extended_vertical_lines[l2_index]
+            vgap = v_line_gap(l1, l2)
+            v_gaps.append((l1_index, l2_index, vgap))
+        
+        return h_gaps, v_gaps
     
-    def _filter_board_lines(self, horizontal_lines, vertical_lines):
-        """Filtra a lista de linhas para tentar ficar só com as linhas do board de xadrez"""
+    def _get_board_lines(self, extended_horizontal_lines, extended_vertical_lines, h_gaps, v_gaps):
+        # Se a imagem fosse o board com nada de espaço nas bordas
+        # cada célular ocuparia 1/8 da largura/altura da imagem
+        # Assim, assumindo que as bordas não sejam muito grande,
+        # vou assumir 1/7 da largura/altura como o maior gap possível
+        # Lembrando que o gap entre duas linhas horizontais é o Y
+        max_allowed_hline_gap = round(self.Y_max/7)
+        max_allowed_vline_gap = round(self.X_max/7)
+        # O menor gap vou assumir como 1/12 das dimensoes
+        # caso contrario é pq o board foi muito mal focado na foto
+        min_allowed_hline_gap = round(self.Y_max/12)
+        min_allowed_vline_gap = round(self.X_max/12)
 
-        # Primeiro eu quero garantir q to ordenando as linhas horizontais e verticais na linha na ordem correta
-        # Linhas horizontais serão ordenadas da mais ao topo à mais de baixo, assim, dou sort pelo termo de index 1, que é o y1 (o index 3 (y2) daria na mesma)
-        horizontal_lines = sorted(horizontal_lines, key=lambda x: x[1])
-        # Linhas verticais dão sort pelo x
-        vertical_lines = sorted(vertical_lines, key=lambda x: x[0])
+        # Pros gaps horizontal e vertical eu vou descobrir as frequencias dos gaps
+        # aqui o g[2] é o valor do gap, visto que h_gaps[0] é [l1_ind, l2_ind, gap]
+        h_gaps_freq = Counter(g[2] for g in h_gaps).most_common()
+        v_gaps_freq = Counter(g[2] for g in v_gaps).most_common()
 
-        # Aqui eu pego só os valores de y das linhas horizontais
-        hline_ys = [l[1] for l in horizontal_lines]
-        # Aqui eu vou ter a diferença entre os y de cada linha horizontal, visto que o y vai do menor ao maior (ordenei assim), esses valores são as distancias positivas em y
-        # entre duas retas horizontais consecutivas
-        hline_gaps = np.diff(hline_ys)
+        # Agora filtro eles pra estarem dentro dos limites
+        h_gaps_freq = [g for g in h_gaps_freq if min_allowed_hline_gap < g[0] < max_allowed_hline_gap]
+        v_gaps_freq = [g for g in v_gaps_freq if min_allowed_vline_gap < g[0] < max_allowed_vline_gap]
 
-        # Fazendo o mesmo pras verticais
-        vline_xs = [l[0] for l in vertical_lines]
-        vline_gaps = np.diff(vline_xs)
+        # O gap entre minhas celulas deve ser igual ao valor que apareceu com mais frequencia nas listas acima
+        # ou pelo menos algum valor muito perto disso.
+        wanted_v_gap = v_gaps_freq[0][0]
+        wanted_h_gap = h_gaps_freq[0][0]
+        # Vou agora iterar por todos gaps, se eles estiverem até N pixels de distância do que eu quero, vou separar aquela linha
+        board_horizontal_lines = []
+        board_vertical_lines = []
+        allowed_threshold = 5
 
-        # Vou pegar o valor mais popular dos gaps horizontais. Preciso tirar do numpy pra funcionar o count
-        h_mode = max(set(hline_gaps), key=list(hline_gaps).count)
-        v_mode = max(set(vline_gaps), key=list(vline_gaps).count)
+        # Agora eu itero pelos gaps horizontais, vejo se o gap está no limite aceitavel de 5 pixels
+        for gap in h_gaps:
+            if (wanted_h_gap - allowed_threshold) < gap[2] < (wanted_h_gap + allowed_threshold):
+                # Caso esteja, eu dou append na l1 e l2 do gap, caso elas ainda não estejam no board_lines
+                l1_index = gap[0]
+                l2_index = gap[1]
+                l1 = extended_horizontal_lines[l1_index]
+                l2 = extended_horizontal_lines[l2_index]
 
-        # O objetivo aqui agora é achar os 'indexes' onde esses valores mais populares acontecem, e garantir q eles são consecutivos
-        hline_indexes = np.argwhere(hline_gaps == h_mode).flatten()
-        vline_indexes = np.argwhere(vline_gaps == v_mode).flatten()
+                if l1 not in board_horizontal_lines:
+                    board_horizontal_lines.append(l1)
+                if l2 not in board_horizontal_lines:
+                    board_horizontal_lines.append(l2)
 
-        # Definindo uma função (aqui msm pra ficar organizado) que testa se os valores são consecutivos
-        is_consecutive = lambda ls: sorted(ls) == list(range(min(ls), max(ls) + 1))
+        # Faço a mesma coisa pros verticais
+        for gap in v_gaps:
+            if (wanted_v_gap - allowed_threshold) < gap[2] < (wanted_v_gap + allowed_threshold):
+                # Caso esteja, eu dou append na l1 e l2 do gap, caso elas ainda não estejam no board_lines
+                l1_index = gap[0]
+                l2_index = gap[1]
+                l1 = extended_vertical_lines[l1_index]
+                l2 = extended_vertical_lines[l2_index]
 
-        # Caso a lista não seja consecutiva ou não tenha 8 gaps (ou seja, entre as 9 linhas do board)
-        if not is_consecutive(hline_indexes) or len(hline_indexes) < 8:
-            print("Não foi possível detectar o board")
-            quit()
+                if l1 not in board_vertical_lines:
+                    board_vertical_lines.append(l1)
+                if l2 not in board_vertical_lines:
+                    board_vertical_lines.append(l2)
 
-        if not is_consecutive(vline_indexes) or len(vline_indexes) < 8:
-            print("Não foi possível detectar o board")
-            quit()
+        # Tem a chance de eu ter pego mais board lines do que necessário
+        # Assim, todas menos uma das linhas dentro de um threhshold devem ser removidas
+        h_idx_to_remove = set()
+        v_idx_to_remove = set()
 
-        # Agora vou filtrar as linhas horizontais/verticais 
-        # Primeiro nos indexes, se eu achei o index 1 isso significa que as linhas q criam aquele gap, são a de index 1 e 2 da lista.
-        # Ou seja, preciso pegar todos os mesmos indexes e um a mais no final
-        hline_indexes = np.append(hline_indexes, [hline_indexes[-1] + 1])
-        vline_indexes = np.append(vline_indexes, [vline_indexes[-1] + 1])
+        # Dps que iterei por todas as outras linhas em relação a uma e gravei as que tão perto dela
+        # eu adiciono essa linha numa lista especial para não ser removida do board
+        h_dont_remove = []
+        v_dont_remove = []
 
-        board_horizontal_lines = np.array(horizontal_lines)
-        board_horizontal_lines = board_horizontal_lines[hline_indexes]
-        board_vertical_lines = np.array(vertical_lines)
-        board_vertical_lines = board_vertical_lines[vline_indexes]
+        # Itera duas vezes pelas horizontais
+        for ind1, h1 in enumerate(board_horizontal_lines):
+            for ind2, h2 in enumerate(board_horizontal_lines):
+                # Confere se as duas linhas tem um Y muito proximo um dos outros
+                # Tem que ser maior que 1, pq se não qnd a linha compara com ela mesmo, vai remover
+                if allowed_threshold >= abs(h1[1] - h2[1]) >= 1:
+                    h_idx_to_remove.add(ind2)
+                # Faz o mesmo pros Y2
+                if allowed_threshold >= abs(h1[3] - h2[3]) >= 1:
+                    h_idx_to_remove.add(ind2)
+
+            if ind1 not in h_idx_to_remove:
+                h_dont_remove.append(ind1)
+
+        # Itera duas vezes pelas verticais
+        for ind1, v1 in enumerate(board_vertical_lines):
+            for ind2, v2 in enumerate(board_vertical_lines):
+                # Confere se as duas linhas tem um X muito proximo um dos outros
+                # Tem que ser maior que 1, pq se não qnd a linha compara com ela mesmo, vai remover
+                if allowed_threshold>= abs(v1[0] - v2[0]) >= 1:
+                    v_idx_to_remove.add(ind2)
+                # Faz o mesmo pros X2
+                if allowed_threshold>= abs(v1[2] - v2[2]) >= 1:
+                    v_idx_to_remove.add(ind2)
+            
+            if ind1 not in v_idx_to_remove:
+                v_dont_remove.append(ind1)
+
+        h_idx_to_remove = list(h_idx_to_remove)
+        v_idx_to_remove = list(v_idx_to_remove)
+
+        # Realmente remove as linhas com aquele index do board_lines
+        board_horizontal_lines = [v for i, v in enumerate(board_horizontal_lines) if i not in h_idx_to_remove or i in h_dont_remove]
+        board_vertical_lines = [v for i, v in enumerate(board_vertical_lines) if i not in v_idx_to_remove or i in v_dont_remove]
 
         return board_horizontal_lines, board_vertical_lines
     
@@ -139,7 +244,6 @@ class ChessRecognizer:
                 return False
 
         intersections = []
-        # TODO: Traduzir os pontos pra uma matriz interpretavel
 
         for hline in board_horizontal_lines:
             for vline in board_vertical_lines:
@@ -179,15 +283,15 @@ class ChessRecognizer:
 
         return board_squares
     
-    
     def board_lines(self, img_gray):
 
         lines = self._get_lines(img_gray)
         horizontal_lines, vertical_lines = self._get_oriented_lines(lines)
-        horizontal_lines, vertical_lines = self._extend_lines(horizontal_lines, vertical_lines)
-        horizontal_lines, vertical_lines = self._filter_board_lines(horizontal_lines, vertical_lines)
+        extended_horizontal_lines, extended_vertical_lines = self._extend_lines(horizontal_lines, vertical_lines)
+        h_gaps, v_gaps = self._get_line_gaps(extended_horizontal_lines, extended_vertical_lines)
+        board_horizontal_lines, board_vertical_lines = self._get_board_lines(extended_horizontal_lines, extended_vertical_lines, h_gaps, v_gaps)
 
-        return horizontal_lines, vertical_lines
+        return board_horizontal_lines, board_vertical_lines
     
     def board_squares(self, board_horizontal_lines, board_vertical_lines):
 
@@ -324,6 +428,4 @@ def board_to_fen(board):
         # If you do not have the additional information choose what to put
         s.write(' w KQkq - 0 1')
         return s.getvalue()
-
-
-
+        
