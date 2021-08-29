@@ -54,7 +54,7 @@
             <p class="fen_label"> FEN code for this position</p>
             <input type="text" class="form-control" value="{{ fen.fen_white }}" data-fen>
            
-           <a class="btn btn-dark mt-3" id="lichess-btn" href="{{ lichess_urls.play_white_url }}" role="button"><img src="{% static 'recognizer/lichess.png' %}" width="20">  Play on Lichess</a>
+           <a class="btn btn-dark mt-3" id="lichess-btn" href="{{ lichess_urls.play_white_url }}" target="_blank" rel="noopener noreferrer" role="button"><img src="{% static 'recognizer/lichess.png' %}" width="20">  Play on Lichess</a>
 
 
         {% endif %}
