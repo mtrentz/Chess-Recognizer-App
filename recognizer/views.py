@@ -4,22 +4,6 @@ from .models import Board
 from .forms import BoardUploadForm
 from .chess_recognizer import ChessRecognizer, translate_pred_to_unicode, board_to_fen
 from PIL import Image
-import pprint
-
-# Create your views here.
-def home(request):
-    context = {
-        'data': Board.objects.all()
-    }
-
-    return render(request, 'recognizer/home.html', context)
-
-# Create your views here.
-def about(request):
-    context = {
-        'data': Board.objects.all()
-    }
-    return render(request, 'recognizer/about.html', context)
 
 def upload(request):
 
@@ -37,10 +21,6 @@ def upload(request):
 
         if form.is_valid():
             board = form.save(commit=False)
-
-            # Passa um usuário só se estiver logado, caso contrario fica NULL
-            if not request.user.is_anonymous:
-                board.user = request.user
 
             # Pega a imagem na memória recém uploadada e passa pra uma img PIL
             stream = board.board_img.file
