@@ -1,0 +1,11 @@
+# This requirements is to be used by docker only. Since the image is already based on pytorch.
+asgiref==3.4.1
+Django==3.2.6
+django-crispy-forms==1.12.0
+numpy==1.21.2
+opencv-python==4.5.3.56
+Pillow==8.3.1
+python-decouple==3.4
+pytz==2021.1
+sqlparse==0.4.1
+typing-extensions==3.10.0.1
